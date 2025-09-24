@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Facturas de Prueba</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .invoice {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .invoice-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .client-info {
+            margin-bottom: 30px;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .items-table th, .items-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .items-table th {
+            background-color: #f8f8f8;
+            font-weight: bold;
+        }
+        .items-table .price, .items-table .quantity, .items-table .total {
+            text-align: right;
+        }
+        .totals {
+            float: right;
+            width: 300px;
+            margin-top: 20px;
+        }
+        .totals table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .totals .final-total {
+            font-weight: bold;
+            font-size: 18px;
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .correct {
+            color: green;
+            font-weight: bold;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .print-button {
+            background: #28a745;
+        }
+        .print-button:hover {
+            background: #1e7e34;
+        }
+        @media print {
+            .controls {
+                display: none;
+            }
+            .invoice {
+                page-break-after: always;
+                box-shadow: none;
+                border: none;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h1>Generador de Facturas de Prueba OCR</h1>
+        <button onclick="generateInvoices()">Generar Nuevas Facturas</button>
+        <button class="print-button" onclick="window.print()">Imprimir/Guardar como PDF</button>
+        <p><strong>Instrucciones:</strong> Genera las facturas, guárdalas como PDF o imprime a PDF, luego usa la aplicación OCR para verificar los cálculos.</p>
+    </div>
+ 
+    <div id="invoices-container"></div>
+ 
+    <script>
+        const companies = [
+            "TechSolutions S.A.",
+            "Comercial Andina Ltda.",
+            "Servicios Integrales Bolivia",
+            "Distribuidora El Alto",
+            "Consultores Asociados"
+        ];
+ 
+        const clients = [
+            { name: "Juan Pérez", address: "Av. Heroínas 1234, Cochabamba" },
+            { name: "María Rodríguez", address: "Calle Sucre 567, La Paz" },
+            { name: "Carlos Mamani", address: "Av. 6 de Agosto 890, El Alto" },
+            { name: "Ana Flores", address: "Calle Bolívar 345, Santa Cruz" },
+            { name: "Luis Condori", address: "Av. América 678, Cochabamba" }
+        ];
+ 
+        const products = [
+            { name: "Laptop HP Pavilion", priceRange: [800, 1200] },
+            { name: "Mouse Inalámbrico", priceRange: [15, 35] },
+            { name: "Teclado Mecánico", priceRange: [45, 80] },
+            { name: "Monitor 24\"", priceRange: [180, 250] },
+            { name: "Impresora Multifuncional", priceRange: [120, 200] },
+            { name: "Disco Duro Externo 1TB", priceRange: [60, 90] },
+            { name: "Memoria USB 32GB", priceRange: [10, 20] },
+            { name: "Webcam HD", priceRange: [25, 45] },
+            { name: "Auriculares Bluetooth", priceRange: [30, 60] },
+            { name: "Cable HDMI", priceRange: [8, 15] }
+        ];
+ 
+        function getRandomElement(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+ 
+        function getRandomPrice(min, max) {
+            return Math.round((Math.random() * (max - min) + min) * 100) / 100;
+        }
+ 
+        function getRandomQuantity() {
+            return Math.floor(Math.random() * 5) + 1;
+        }
+ 
+        function generateInvoiceNumber() {
+            return String(Math.floor(Math.random() * 90000) + 10000);
+        }
+ 
+        function generateInvoice(invoiceNum, shouldHaveError) {
+            const company = getRandomElement(companies);
+            const client = getRandomElement(clients);
+            const invoiceNumber = generateInvoiceNumber();
+            const date = new Date().toLocaleDateString('es-BO');
+           
+            const numItems = Math.floor(Math.random() * 4) + 2; // 2-5 items
+            const items = [];
+            let subtotalCalculated = 0;
+           
+            for (let i = 0; i < numItems; i++) {
+                const product = getRandomElement(products);
+                const price = getRandomPrice(product.priceRange[0], product.priceRange[1]);
+                const quantity = getRandomQuantity();
+                const total = Math.round(price * quantity * 100) / 100;
+               
+                items.push({
+                    name: product.name,
+                    quantity: quantity,
+                    price: price,
+                    total: total
+                });
+               
+                subtotalCalculated += total;
+            }
+           
+            subtotalCalculated = Math.round(subtotalCalculated * 100) / 100;
+            const tax = Math.round(subtotalCalculated * 0.13 * 100) / 100; // 13% IVA
+            const totalCalculated = Math.round((subtotalCalculated + tax) * 100) / 100;
+           
+            // Introducir error en algunos cálculos
+            let subtotalShown = subtotalCalculated;
+            let totalShown = totalCalculated;
+            let hasError = false;
+           
+            if (shouldHaveError) {
+                const errorType = Math.random();
+                if (errorType < 0.5) {
+                    // Error en subtotal
+                    subtotalShown = Math.round((subtotalCalculated + (Math.random() * 20 - 10)) * 100) / 100;
+                    totalShown = Math.round((subtotalShown + tax) * 100) / 100;
+                    hasError = true;
+                } else {
+                    // Error en total final
+                    totalShown = Math.round((totalCalculated + (Math.random() * 30 - 15)) * 100) / 100;
+                    hasError = true;
+                }
+            }
+           
+            return `
+                <div class="invoice">
+                    <div class="header">
+                        <div class="company-name">${company}</div>
+                        <p>NIT: ${Math.floor(Math.random() * 9000000) + 1000000}</p>
+                        <p>Cochabamba - Bolivia</p>
+                    </div>
+                   
+                    <div class="invoice-info">
+                        <div>
+                            <strong>FACTURA N°:</strong> ${invoiceNumber}<br>
+                            <strong>FECHA:</strong> ${date}
+                        </div>
+                        <div>
+                            <strong>CLIENTE:</strong><br>
+                            ${client.name}<br>
+                            ${client.address}
+                        </div>
+                    </div>
+                   
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>DESCRIPCIÓN</th>
+                                <th>CANT.</th>
+                                <th>PRECIO UNIT.</th>
+                                <th>TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td class="quantity">${item.quantity}</td>
+                                    <td class="price">Bs. ${item.price.toFixed(2)}</td>
+                                    <td class="total">Bs. ${item.total.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                   
+                    <div class="totals">
+                        <table>
+                            <tr>
+                                <td>SUBTOTAL:</td>
+                                <td class="price">Bs. ${subtotalShown.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td>IVA (13%):</td>
+                                <td class="price">Bs. ${tax.toFixed(2)}</td>
+                            </tr>
+                            <tr class="final-total">
+                                <td>TOTAL:</td>
+                                <td class="price">Bs. ${totalShown.toFixed(2)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="clear: both;"></div>
+                   
+                    <!-- Información oculta para verificación -->
+                    <div style="display: none;">
+                        VERIFICACION: SUBTOTAL_CALCULADO=${subtotalCalculated.toFixed(2)} SUBTOTAL_MOSTRADO=${subtotalShown.toFixed(2)} TOTAL_CALCULADO=${totalCalculated.toFixed(2)} TOTAL_MOSTRADO=${totalShown.toFixed(2)} ERROR=${hasError}
+                    </div>
+                </div>
+            `;
+        }
+ 
+        function generateInvoices() {
+            const container = document.getElementById('invoices-container');
+            container.innerHTML = '';
+           
+            // Generar 8 facturas: 5 correctas y 3 con errores
+            for (let i = 1; i <= 8; i++) {
+                const shouldHaveError = i > 5; // Las últimas 3 tendrán errores
+                container.innerHTML += generateInvoice(i, shouldHaveError);
+            }
+        }
+ 
+        // Generar facturas iniciales al cargar la página
+        generateInvoices();
+    </script>
+</body>
+</html>
